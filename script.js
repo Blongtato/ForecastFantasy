@@ -147,7 +147,9 @@ function drawRangeBar(m){
 
 function renderForecast(){
   const m=selected();
-  if(m.settled){
+  const p=position(m);
+
+  if(m.settled&&!p){
     const allSettled=markets.every(m=>m.settled);
     $('selected-title').textContent=m.name+' — SETTLED';
     let inner=`<p class="trade-prompt">This market has settled.</p><div class="settled-state"><span class="settled-tag">Price moved ${m.direction>0?'↑':'↓'} to ₱${m.price}</span>`;
@@ -165,10 +167,13 @@ function renderForecast(){
     return;
   }
 
-  const p=position(m);
   $('selected-title').textContent=m.name;
   let html=`<p class="trade-prompt">Current price: <strong>₱ ${m.price}</strong> · ${m.category}</p>`;
   html+=drawRangeBar(m);
+
+  if(m.settled&&p){
+    html+=`<div class="settled-banner"><span class="settled-tag">MARKET SETTLED</span><span class="tiny-label">Price is locked. Sell your shares to close your position.</span></div>`;
+  }
 
   if(equipment[2].bought&&m.calamityChance>0){
     const risk=Math.round(m.calamityChance*100);
@@ -193,36 +198,45 @@ function renderForecast(){
   html+=`</div>`;
   html+=`</div>`;
 
-  const maxBuy=m.price>0?Math.floor(balance/m.price):0;
+  const maxBuy=(m.settled)?0:Math.floor(balance/m.price);
   const maxSell=p?p.shares:0;
 
   html+=`<div class="trade-buttons">`;
-  html+=`<button class="trade-btn buy-action" id="buy-shares" ${maxBuy<=0?'disabled':''}>BUY <span id="buy-preview">${Math.min(1,maxBuy)}</span> · ₱ ${Math.min(1,maxBuy)*m.price}</button>`;
-  html+=`<button class="trade-btn sell-action" id="sell-shares" ${!p?'disabled':''}>SELL <span id="sell-preview">${Math.min(1,maxSell)}</span> · ₱ ${Math.min(1,maxSell)*m.price}</button>`;
+  if(!m.settled){
+    html+=`<button class="trade-btn buy-action" id="buy-shares" ${maxBuy<=0?'disabled':''}>BUY <span id="buy-preview">${Math.min(1,maxBuy)}</span> · ₱ ${Math.min(1,maxBuy)*m.price}</button>`;
+  }
+  html+=`<button class="trade-btn sell-action" id="sell-shares" ${!p||maxSell<=0?'disabled':''}>SELL <span id="sell-preview">${Math.min(1,maxSell)}</span> · ₱ ${Math.min(1,maxSell)*m.price}</button>`;
   html+=`</div>`;
 
   html+=`<div class="cash-line">Cash: ₱${balance.toLocaleString()}${p?' · Position: ₱'+Math.round(portfolioValue()).toLocaleString():''}</div>`;
   html+=`<div class="intel-note"><span>✳</span><div><b>Market news</b><br>${m.news}</div></div>`;
-  html+=`<button class="submit-btn" id="settle-market">SETTLE MARKET →</button>`;
+  if(!m.settled){
+    html+=`<button class="submit-btn" id="settle-market">SETTLE MARKET →</button>`;
+  }else{
+    const allSettled=markets.every(m=>m.settled);
+    if(allSettled){
+      html+=`<button class="submit-btn" id="new-shift-btn">START NEW SHIFT →</button>`;
+    }
+  }
   $('trade-content').innerHTML=html;
 
   const amtInput=$('trade-amount');
   function updatePreviews(){
     const amt=Math.max(1,Math.min(999,Number(amtInput.value)||1));
     amtInput.value=amt;
-    const bPreview=Math.min(amt,maxBuy);
     const sPreview=Math.min(amt,maxSell);
-    $('buy-preview').textContent=bPreview;
-    $('buy-shares').disabled=maxBuy<=0;
-    $('sell-preview').textContent=sPreview;
-    $('sell-shares').disabled=!p||maxSell<=0;
+    if($('buy-preview'))$('buy-preview').textContent=Math.min(amt,maxBuy);
+    if($('buy-shares'))$('buy-shares').disabled=maxBuy<=0;
+    if($('sell-preview'))$('sell-preview').textContent=sPreview;
+    if($('sell-shares'))$('sell-shares').disabled=!p||maxSell<=0;
   }
   amtInput.oninput=updatePreviews;
   $('amt-down').onclick=()=>{amtInput.value=Math.max(1,Number(amtInput.value)-1);updatePreviews()};
   $('amt-up').onclick=()=>{amtInput.value=Math.min(999,Number(amtInput.value)+1);updatePreviews()};
-  $('buy-shares').onclick=()=>buyShares(m,Math.min(Number(amtInput.value),maxBuy));
-  $('sell-shares').onclick=()=>sellShares(m,Math.min(Number(amtInput.value),maxSell));
-  $('settle-market').onclick=()=>settleMarket(m);
+  if($('buy-shares'))$('buy-shares').onclick=()=>buyShares(m,Math.min(Number(amtInput.value),maxBuy));
+  if($('sell-shares'))$('sell-shares').onclick=()=>sellShares(m,Math.min(Number(amtInput.value),maxSell));
+  if($('settle-market'))$('settle-market').onclick=()=>settleMarket(m);
+  if($('new-shift-btn'))$('new-shift-btn').onclick=startNewShift;
 }
 
 function renderFeed(){
@@ -251,7 +265,7 @@ function buyShares(m,amt){
       }
     }
   }else{
-    history.unshift({m,shares:amt,entryPrice:m.price,type:'long',settled:false,payout:0,calamity:false,direction:0});
+    history.unshift({m,shares:amt,entryPrice:m.price,type:'long',settled:false,payout:0,calamity:false,direction:0,exitPrice:0});
     balance-=cost;
   }
   updateBalance();
@@ -262,21 +276,22 @@ function buyShares(m,amt){
 }
 
 function sellShares(m,amt){
-  if(m.settled||gameOver||amt<=0)return;
+  if(gameOver||amt<=0)return;
   const p=position(m);
   if(!p||p.shares<amt){toast('You don\'t own that many shares.');return}
-  if(p.type==='long'){
-    const profit=amt*(m.price-p.entryPrice);
-    balance+=profit;
-    p.shares-=amt;
-    if(p.shares===0){
-      history.splice(history.indexOf(p),1);
-    }
+  const profit=amt*(m.price-p.entryPrice);
+  balance+=amt*m.price;
+  p.shares-=amt;
+  p.exitPrice=m.price;
+  p.payout=(p.payout||0)+Math.round(profit);
+  if(p.shares===0){
+    p.settled=true;
   }
   updateBalance();
   toast(`Sold ${amt} ${m.symbol} @ ₱${m.price}`);
   renderMarkets();
   renderForecast();
+  renderArchive();
   checkGameOver();
 }
 
@@ -292,33 +307,22 @@ function settleMarket(m){
   m.settled=true;
 
   const p=position(m);
-  let totalPnL=0;
+  const isVolatile=Math.random()<m.calamityChance;
   if(p){
-    if(p.type==='long'){
-      totalPnL=p.shares*(newPrice-p.entryPrice);
-    }else{
-      totalPnL=p.shares*(p.entryPrice-newPrice);
-    }
-    balance+=totalPnL;
-    p.settled=true;
+    p.direction=change;
+    p.calamity=isVolatile;
   }
 
-  const isVolatile=Math.random()<m.calamityChance;
-  history.unshift({m,shares:p?p.shares:0,entryPrice:p?p.entryPrice:0,type:p?p.type:'none',settled:true,payout:Math.round(totalPnL),calamity:isVolatile,direction:change});
-
   updateBalance();
-  const sign=totalPnL>=0?'+':'';
-  $('balance-delta').textContent=`${sign}₱ ${Math.round(totalPnL)} this trade`;
-  if(totalPnL<0){
-    toast(`${m.symbol} settled. You lost ₱${Math.abs(Math.round(totalPnL))}.`);
-  }else if(isVolatile){
-    toast(`${m.symbol} settled. Wild swing — P&L: ${sign}₱${Math.round(totalPnL)}`);
+  if(p){
+    const unrealized=p.type==='long'?p.shares*(newPrice-p.entryPrice):p.shares*(p.entryPrice-newPrice);
+    const sign=unrealized>=0?'+':'';
+    toast(`${m.symbol} settled at ₱${newPrice}. ${sign}₱${Math.round(unrealized)} unrealized.`);
   }else{
-    toast(`${m.symbol} settled. P&L: ${sign}₱${Math.round(totalPnL)}`);
+    toast(`${m.symbol} settled at ₱${newPrice}.`);
   }
   renderMarkets();
   renderForecast();
-  renderArchive();
   checkGameOver();
   revealSections();
 }
@@ -371,25 +375,38 @@ function renderArchive(){
   const settled=history.filter(h=>h.settled);
   $('archive-list').innerHTML=settled.length?
     settled.map(h=>{
+      const exitPrice=h.exitPrice||h.m.price;
       const dirTag=h.direction>0?'↑ UP':'↓ DOWN';
-      return`<div class="archive-row"><strong>${h.m.name}</strong><span>${h.type.toUpperCase()} ${h.shares} shares @ ₱${h.entryPrice} → ₱${h.m.price}</span><span class="${h.payout>=0?'win':'loss'}">${dirTag}</span><span class="${h.payout>=0?'win':'loss'}">${h.payout>=0?'+':''}₱ ${Math.round(h.payout)}</span></div>`;
+      return`<div class="archive-row"><strong>${h.m.name}</strong><span>${h.type.toUpperCase()} ${h.shares} shares @ ₱${h.entryPrice} → ₱${exitPrice}</span><span class="${h.payout>=0?'win':'loss'}">${dirTag}</span><span class="${h.payout>=0?'win':'loss'}">${h.payout>=0?'+':''}₱ ${Math.round(h.payout)}</span></div>`;
     }).join('')
     :'<div class="archive-row"><strong>No settled trades</strong><span>Your first trade is waiting.</span><span>--</span><span>--</span></div>';
 }
 
 function startNewShift(){
+  const openPositions=history.filter(h=>!h.settled);
+  openPositions.forEach(h=>{
+    let pnl=0;
+    if(h.type==='long')pnl=h.shares*(h.m.price-h.entryPrice);
+    else pnl=h.shares*(h.entryPrice-h.m.price);
+    balance+=pnl;
+    h.exitPrice=h.m.price;
+    h.payout=Math.round(pnl);
+    h.settled=true;
+  });
+  if(openPositions.length>0)updateBalance();
+
   markets.forEach(m=>{
     m.settled=false;
     m.price=Math.round(15+Math.random()*400);
     m.volatility=Math.round(10+Math.random()*40);
     m.direction=0;
   });
-  history=history.filter(h=>!h.settled);
   shiftCount++;
   selectedId='moon';
   toast('New shift. Three fresh markets are open.');
   renderMarkets();
   renderForecast();
+  renderArchive();
 }
 
 function toast(message){
