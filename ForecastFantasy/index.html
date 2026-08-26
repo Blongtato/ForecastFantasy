@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forecast Fantasy | The Ledger</title>
+  <title>The Ledger</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -21,59 +21,62 @@
     <div class="app-layout">
       <aside class="sidebar">
         <div class="sidebar-label">WORKSPACE</div>
-        <button class="nav-item active" data-view="desk"><span class="nav-icon">▦</span> Forecast desk <span class="nav-count">3</span></button>
-        <button class="nav-item" data-view="inbox"><span class="nav-icon">✉</span> Rumor inbox <span class="nav-count" id="unread-count">3</span></button>
-        <button class="nav-item" data-view="lab"><span class="nav-icon">⌁</span> Signal lab</button>
+        <button class="nav-item active" data-view="desk"><span class="nav-icon">▦</span> Markets <span class="nav-count">3</span></button>
+        <button class="nav-item hidden-section" id="nav-news" data-view="inbox"><span class="nav-icon">✉</span> News feed <span class="nav-count" id="unread-count">3</span></button>
         <div class="sidebar-label sidebar-label-spaced">OPERATIONS</div>
-        <button class="nav-item" data-view="upgrades"><span class="nav-icon">⊞</span> Equipment <span class="upgrade-badge" id="upgrade-count">1</span></button>
-        <button class="nav-item" data-view="archive"><span class="nav-icon">▤</span> Settled markets</button>
+        <button class="nav-item hidden-section" id="nav-upgrades" data-view="upgrades"><span class="nav-icon">⊞</span> Upgrades <span class="upgrade-badge" id="upgrade-count">3</span></button>
+        <button class="nav-item" data-view="archive"><span class="nav-icon">▤</span> Trade history</button>
         <div class="sidebar-footer"><div class="tiny-label">CURRENT SHIFT</div><strong>MONDAY / 01</strong><div class="shift-bar"><span></span></div><small>3 markets left today</small></div>
       </aside>
 
       <section class="workspace">
         <div class="workspace-heading">
-          <div><div class="eyebrow">MONDAY, 14 HARVESTMOON  ·  SHIFT 01</div><h1>Good morning, forecaster.</h1><p>Read the room. Price the unknown. Keep the lights on.</p></div>
-          <div class="cash-block"><span class="tiny-label">LEDGER BALANCE</span><strong id="balance">₱ 1,240</strong><span class="cash-delta" id="balance-delta">+₱ 180 today</span></div>
+          <div><div class="eyebrow">MONDAY, 14 HARVESTMOON  ·  SHIFT 01</div><h1>Good morning, trader.</h1><p>Pick a market. Read the news. Place your trade.</p></div>
+          <div class="cash-block"><span class="tiny-label">LEDGER BALANCE</span><strong id="balance">₱ 500</strong><span class="cash-delta" id="balance-delta">+₱ 0 today</span></div>
         </div>
 
         <div class="dashboard-grid" id="desk-view">
           <section class="panel market-panel" id="tutorial-markets">
-            <div class="panel-header"><div><span class="panel-kicker">OPEN MARKETS</span><h2>What moves next?</h2></div><span class="live-pill"><i></i> LIVE</span></div>
+            <div class="panel-header"><div><span class="panel-kicker">MARKETS</span><h2>What is available today</h2></div><span class="live-pill"><i></i> LIVE</span></div>
             <div class="market-list" id="market-list"></div>
           </section>
 
-          <section class="panel forecast-panel" id="tutorial-ticket">
-            <div class="panel-header"><div><span class="panel-kicker">FORECAST TICKET</span><h2 id="selected-title">Select a market</h2></div><span class="ticket-id" id="ticket-id">TKT—001</span></div>
-            <div id="forecast-content" class="forecast-content"></div>
+          <section class="panel trade-panel" id="tutorial-ticket">
+            <div class="panel-header"><div><span class="panel-kicker">TRADE</span><h2 id="selected-title">Select a market</h2></div></div>
+            <div id="trade-content" class="trade-content"></div>
           </section>
 
-          <section class="panel signal-panel" id="tutorial-signals">
-            <div class="panel-header"><div><span class="panel-kicker">SIGNAL LAB <span class="pro-tag">PRO</span></span><h2>Evidence, not vibes.</h2></div><button class="icon-button" id="refresh-chart" title="Refresh signal chart">↻</button></div>
-            <div id="chart-wrap" class="chart-wrap"><div class="empty-state">Submit a forecast to<br><strong>activate the signal lab</strong></div></div>
-            <div class="signal-legend"><span><i class="legend-dot market"></i> MARKET PRICE</span><span><i class="legend-dot model"></i> MODEL RANGE</span></div>
-          </section>
-
-          <section class="panel feed-panel" id="tutorial-notes">
-            <div class="panel-header"><div><span class="panel-kicker">FIELD NOTES</span><h2>Word on the quay</h2></div><button class="text-button" data-view-target="inbox">OPEN INBOX →</button></div>
+          <section class="panel feed-panel hidden-section" id="tutorial-notes">
+            <div class="panel-header"><div><span class="panel-kicker">NEWS</span><h2>What people are saying</h2></div><button class="text-button" data-view-target="inbox">SEE ALL →</button></div>
             <div id="feed-list" class="feed-list"></div>
           </section>
         </div>
 
-        <div class="secondary-view hidden" id="inbox-view"><div class="view-title"><div><span class="eyebrow">COMMUNICATIONS / UNSOURCED INTELLIGENCE</span><h2>Rumor inbox</h2></div><span class="view-meta">3 new messages</span></div><div class="inbox-grid" id="inbox-list"></div></div>
-        <div class="secondary-view hidden" id="upgrades-view"><div class="view-title"><div><span class="eyebrow">CAPITAL EXPENDITURE / AVAILABLE FUNDS ₱ 1,240</span><h2>Equipment bay</h2></div><span class="view-meta">YOUR KIT // BASIC</span></div><div class="upgrade-grid" id="upgrade-list"></div></div>
-        <div class="secondary-view hidden" id="archive-view"><div class="view-title"><div><span class="eyebrow">CLOSED POSITIONS / SETTLEMENT HISTORY</span><h2>Settled markets</h2></div></div><div class="archive-list" id="archive-list"></div></div>
-        <div class="secondary-view hidden" id="lab-view"><div class="view-title"><div><span class="eyebrow">QUANTITATIVE TOOLS / NOISE FILTERING</span><h2>Signal lab</h2></div></div><div class="lab-copy"><div class="lab-big">The signal is<br><em>in the noise.</em></div><p>Buy a tool from Equipment to unlock its view on the forecast desk. Your first upgrade, the Oracle Lens, reveals a moving market range. Better instruments reduce the fog, but never erase the unknown.</p></div></div>
+        <div class="secondary-view hidden" id="inbox-view"><div class="view-title"><div><span class="eyebrow">NEWS</span><h2>All news</h2></div><span class="view-meta">3 stories</span></div><div class="inbox-grid" id="inbox-list"></div></div>
+        <div class="secondary-view hidden" id="upgrades-view"><div class="view-title"><div><span class="eyebrow" id="upgrades-funds-label">UPGRADES / AVAILABLE CASH ₱ 500</span><h2>Buy upgrades</h2></div><span class="view-meta" id="kit-label">YOUR KIT // BASIC</span></div><div class="upgrade-grid" id="upgrade-list"></div></div>
+        <div class="secondary-view hidden" id="archive-view"><div class="view-title"><div><span class="eyebrow">PAST TRADES</span><h2>Trade history</h2></div></div><div class="archive-list" id="archive-list"></div></div>
       </section>
     </div>
+
     <div class="tutorial-backdrop hidden" id="tutorial-backdrop"></div>
     <aside class="tutorial-card hidden" id="tutorial-card" aria-labelledby="tutorial-title" role="dialog">
-      <div class="tutorial-topline"><span id="tutorial-step">01 / 05</span><button class="tutorial-skip" id="tutorial-skip">SKIP TOUR</button></div>
+      <div class="tutorial-topline"><span id="tutorial-step">01 / 04</span><button class="tutorial-skip" id="tutorial-skip">SKIP TOUR</button></div>
       <div class="tutorial-mark">FIELD GUIDE <span>●</span></div>
       <h2 id="tutorial-title">Start with the markets.</h2>
-      <p id="tutorial-copy">Every shift gives you three questions about the fantasy market. Pick one to open its forecast ticket.</p>
+      <p id="tutorial-copy"></p>
       <div class="tutorial-progress" id="tutorial-progress"></div>
       <button class="tutorial-next" id="tutorial-next">NEXT LESSON →</button>
     </aside>
+
+    <div class="game-over-backdrop hidden" id="game-over-backdrop"></div>
+    <aside class="game-over-card hidden" id="game-over-card">
+      <div class="tutorial-mark">SHIFT ENDED</div>
+      <h2>Out of funds.</h2>
+      <p id="game-over-copy">You ran out of cash. The exchange won't let you trade anymore.</p>
+      <div class="game-over-stats" id="game-over-stats"></div>
+      <button class="tutorial-next" id="restart-btn">NEW SHIFT →</button>
+    </aside>
+
     <div class="toast" id="toast"></div>
   </main>
   <script src="script.js"></script>
